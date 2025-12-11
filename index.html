@@ -64,6 +64,16 @@
                     生成验证码
                 </button>
             </div>
+            
+            <!-- 新增：调试信息（可选，可移除） -->
+            <div id="debug-info" class="mt-4 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg hidden">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>服务器时间：<span id="server-time">--:--:--</span></div>
+                    <div>本地时间：<span id="local-time">--:--:--</span></div>
+                    <div>UTC时间：<span id="utc-time">--:--:--</span></div>
+                    <div>今日日期：<span id="today-date">----/--/--</span></div>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -77,17 +87,51 @@
     <script>
         // 配置项
         const CONFIG = {
-            SECRET_KEY: "123000"
+            SECRET_KEY: "123000",
+            SHOW_DEBUG_INFO: false // 是否显示调试信息
         };
 
         // DOM 元素
         const verificationCodeEl = document.getElementById('verification-code');
         const generateBtn = document.getElementById('generate-btn');
+        const debugInfoEl = document.getElementById('debug-info');
 
         // 初始化页面
         document.addEventListener('DOMContentLoaded', () => {
             generateBtn.addEventListener('click', generateCode);
+            
+            // 显示/隐藏调试信息
+            if (CONFIG.SHOW_DEBUG_INFO) {
+                debugInfoEl.classList.remove('hidden');
+                updateDebugInfo();
+                setInterval(updateDebugInfo, 1000);
+            }
+            
+            // 显示当前日期和更新时间的提示
+            updateDateHint();
         });
+
+        // 更新调试信息
+        function updateDebugInfo() {
+            const now = new Date();
+            document.getElementById('server-time').textContent = now.toLocaleTimeString();
+            document.getElementById('local-time').textContent = now.toLocaleTimeString('zh-CN');
+            document.getElementById('utc-time').textContent = now.toUTCString().split(' ')[4];
+            
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            document.getElementById('today-date').textContent = `${year}/${month}/${day}`;
+        }
+
+        // 更新日期提示
+        function updateDateHint() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            console.log(`当前日期（本地时间）：${year}-${month}-${day}`);
+        }
 
         // SHA-1 哈希函数
         async function sha1(str) {
@@ -104,17 +148,32 @@
             }
         }
 
-        // 生成验证码
+        // 生成验证码 - 修复时区问题
         async function generateDailyCode() {
-            const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+            // 方法1：使用本地时间的日期组件
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const today = `${year}${month}${day}`;
+            
+            // 方法2：使用toLocaleDateString（备用）
+            // const today = now.toLocaleDateString('en-CA').replace(/-/g, '');
+            
+            console.log(`使用的日期：${today}（本地时间：${year}-${month}-${day}）`);
+            
             const combined = today + CONFIG.SECRET_KEY;
+            console.log(`原始字符串：${combined}`);
+            
             const hash = await sha1(combined);
+            console.log(`SHA-1哈希值：${hash}`);
             
             if (!hash) return '';
             
             const decimal = parseInt(hash.substring(0, 8), 16);
             const code = (decimal % 1000000).toString().padStart(6, '0');
             
+            console.log(`生成的验证码：${code}`);
             return code;
         }
 
